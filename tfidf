@@ -1,0 +1,48 @@
+import os
+path_to_articles = './spam'
+articles = [os.path.join(path_to_articles, item) 
+            for item in os.listdir(path_to_articles)
+            if item.endswith('.txt')]
+
+articles_texts = []
+
+for article_path in articles:
+    with open(article_path, encoding = 'utf8') as a_src:
+        articles_texts.append("\n".join(a_src.readlines()))
+
+from nltk.tokenize import wordpunct_tokenize
+from pymorphy2 import MorphAnalyzer
+
+morph = MorphAnalyzer()
+
+articles_preprocessed = []
+for a_text in articles_texts:
+    a_tokens = wordpunct_tokenize(a_text)
+    a_lemmatized = ' '.join([morph.parse(item)[0].normal_form for item in a_tokens])
+    articles_preprocessed.append(a_lemmatized)
+
+from nltk.corpus import stopwords
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+stops = stopwords.words("russian")
+
+tfidf = TfidfVectorizer(analyzer="word", stop_words=stops)
+
+articles_tfidf = tfidf.fit_transform(articles_preprocessed)
+
+import numpy as np
+
+def get_top_tf_idf_words(tfidf_vector, feature_names, top_n):
+    sorted_nzs = np.argsort(tfidf_vector.data)[:-(top_n+1):-1]
+    return feature_names[tfidf_vector.indices[sorted_nzs]]
+
+feature_names = np.array(tfidf.get_feature_names())
+
+spam_words = []
+
+for i, article in enumerate(articles_texts):
+    article_vector = articles_tfidf[i, :]
+    words = get_top_tf_idf_words(article_vector, feature_names, 10)
+    spam_words.extend(words)
+spam_triggers = set(spam_words)
+print(spam_triggers)
