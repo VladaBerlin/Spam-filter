@@ -1,0 +1,19 @@
+import mailbox, re
+from bs4 import BeautifulSoup
+
+mbox = mailbox.mbox(r"почта.mbox")
+
+for i, message in enumerate(mbox):
+    content = message.get_payload(decode=True)
+    if content:
+        print('true')
+        text = content.decode("utf-8", "replace")
+        soup = BeautifulSoup(text, 'html.parser')
+        item = soup.span
+        if item:
+            item = item.contents
+            for elem in item:
+                elem = str(elem).strip()
+                elem_clear = re.sub(r'<[^<]+>', '', elem)
+                with open('spam_file.txt', 'a', encoding='utf-8') as new_file:
+                    new_file.write(elem_clear)
